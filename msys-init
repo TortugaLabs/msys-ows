@@ -1,0 +1,134 @@
+#!/bin/bash
+#
+# Layer 2 configuration script
+#
+# Requires
+# - ping
+# - telnet
+# - nc
+#
+set -euf -o pipefail
+
+cfg=${MSYS_CFG:-/etc/msys.cfg}
+secrets=${MSYS_SECRETS:-/etc/secrets.cfg}
+passwd=${MSYS_PASSWD:-}
+authkeys=${MSYS_AUTHKEYS:-}
+
+if [ -d "${MSYS_LIBDIR:-}" ] ; then
+  libdir=${MSYS_LIBDIR}
+else
+  if [ -d $(dirname $0)/ashlib ] ; then
+    libdir=$(cd $(dirname $0) ; pwd)
+  else
+    libdir=${MSYS_LIBDIR:-/lib/msys}
+  fi
+fi
+payload=""
+autorun=""
+
+while [ $# -gt 0 ]
+do
+  case "$1" in
+  --secrets=*)
+    secrets=${1#--secrets=}
+    ;;
+  --cfg=*)
+    cfg=${1#--cfg=}
+    ;;
+  --lib=*)
+    libdir=${1#--lib=}
+    ;;
+  --passwd=*)
+    passwd=${1#--passwd=}
+    ;;
+  --payload=*)
+    payload=$1
+    ;;
+  --autorun)
+    autorun=$1
+    ;;
+  --no-autorun)
+    autorun=$1
+    ;;
+  --auth-keys=*)
+    authkeys=$(cat ${1#--auth-keys})
+    ;;
+  *)
+    break
+    ;;
+  esac
+  shift
+done
+
+. $libdir/ashlib/core.sh
+
+[ -z "$passwd" ] && fatal "Define a default password!" || :
+[ -z "$authkeys" ] && fatal "Define authorized keys" || :
+fact_init_ip=192.168.1.1
+
+for target in "$@"
+do
+  if ! ping -c 1 "$target" ; then
+    continue
+  fi
+
+  if [ "$target" = "$fact_init_ip" ] ; then
+    # OK, the factory reset IP is available...
+    res=$( (sleep 1 ; echo 'true' ; sleep 1) | telnet "$target" 2>&1 ) || :
+    if grep -q "passwd" <<<"$res" ; then
+      echo "TELNET is active"
+
+      echo "Setting default root password and auth keys"
+      (
+	cat <<-EOF
+	set -x
+	passwd
+	$passwd
+	$passwd
+	tee /etc/dropbear/authorized_keys <<_EOF_
+	$authkeys
+	_EOF_
+	. /etc/openwrt_release
+	echo "\$DISTRIB_ID \$DISTRIB_CODENAME \$DISTRIB_TARGET (\$DISTRIB_RELEASE \$DISTRIB_REVISION)" | tee /etc/banner
+	exit 
+	EOF
+      ) | (
+	while read ln
+	do
+	  echo "$ln" ; sleep 1
+	done
+      ) | telnet "$target" || echo exit=$?
+      # Wait for SSH to come up....
+      retries=30
+      while ! ssh -o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null' -l root $target true
+      do
+	retries=$(expr $retries - 1)
+	[ $retries -eq 0 ] && fatal "SSHD failed to start..."
+	sleep 3
+      done
+    fi
+  fi
+
+  scp \
+	-o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null' \
+	-p \
+	"$cfg" "$secrets" "root@$target":/etc
+  $libdir/msys-deploy --lib=$libdir $payload $autorun "$target"
+
+  #~ (
+    #~ eof_marker=$(md5sum "$0" | awk '{print $1}')
+    #~ declare -f fatal fixfile
+    #~ echo "fixfile --mode=755 /bin/l2cfs <<'__EOF_$eof_marker'"
+    #~ for i in core.sh fixattr.sh fixfile.sh fixlnk.sh shesc.sh
+    #~ do
+      #~ cat "$ashlib_dir/$i"
+    #~ done
+    #~ cat $(dirname $0)/l2cfs.sh
+    #~ echo ''
+    #~ echo "__EOF_$eof_marker"
+    #~ # Copy scripts
+    #~ # Copy default config files (if any)
+  #~ ) |ssh  root@$target
+
+
+done

@@ -1,0 +1,6 @@
+[submodule "muninlite"]
+	path = muninlite
+	url = https://github.com/TortugaLabs/muninlite.git
+[submodule "ashlib"]
+	path = ashlib
+	url = https://github.com/TortugaLabs/ashlib.git

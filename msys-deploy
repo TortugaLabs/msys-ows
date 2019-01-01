@@ -1,0 +1,102 @@
+#!/bin/bash
+#
+# Deploy configuration scripts
+#
+set -euf -o pipefail
+
+if [ -d "${MSYS_LIBDIR:-}" ] ; then
+  libdir=${MSYS_LIBDIR}
+else
+  if [ -d $(dirname $0)/ashlib ] ; then
+    libdir=$(cd $(dirname $0) ; pwd)
+  else
+    libdir=${MSYS_LIBDIR:-/lib/msys}
+  fi
+fi
+
+install_location="/lib/msys"
+payload=""
+autorun=false
+
+
+while [ $# -gt 0 ]
+do
+  case "$1" in
+  --lib=*)
+    libdir=${1#--lib=}
+    ;;
+  --payload=*)
+    payload=${1#--payload=}
+    ;;
+  --install=*)
+    install_location=${1#--install=}
+    ;;
+  --autorun)
+    autorun=true
+    ;;
+  --no-autorun)
+    autorun=false
+    ;;
+  *)
+    break
+    ;;
+  esac
+  shift
+done
+
+[ -z "$payload" ] && payload=$libdir || :
+
+. $libdir/ashlib/core.sh
+
+do_ssh() {
+  ssh \
+	-o 'StrictHostKeyChecking=no' \
+	-o 'UserKnownHostsFile=/dev/null' \
+	-o 'BatchMode=true' \
+	-l root \
+	"$@"
+}
+
+[ ! -d "$payload" ] && fatal "Payload $payload not found" || :
+
+for target in "$@"
+do
+  if ! ping -c 1 "$target" ; then
+    continue
+  fi
+  if ! do_ssh "$target" true ; then
+    warn "Unable to connect to $target"
+    continue
+  fi
+
+  do_ssh "$target" <<-EOF
+	rm -rf "$install_location.new"
+	mkdir -p "$install_location.new"
+	EOF
+
+  if [ -d "$payload/muninlite" ] ; then
+    rm -f "$payload/munin-node"
+    make -C "$payload/muninlite" PLUGINS="cpu if_ if_err_ load memory processes uptime interrupts irqstats owswitch_"
+    ln "$payload/muninlite/munin-node" "$payload/munin-node"
+  fi
+
+  if (tar -zcf - -C "$payload" \
+	--exclude=./muninlite \
+	--exclude-backups \
+	--exclude-caches \
+	--exclude-vcs \
+	. | do_ssh "$target" tar -C "$install_location.new" -zxf -) ; then
+    do_ssh "$target" <<-EOF
+	rm -rf "$install_location.old"
+	[ -d "$install_location" ] && mv "$install_location" "$install_location.old" || :
+	mv "$install_location.new" "$install_location"
+	rm -rf "$install_location.old"
+	$( if $autorun ; then echo "$install_location/msys-runner" ; fi )
+	EOF
+  else
+    do_ssh "$target" <<-EOF
+	rm -rf "$install_location.new"
+	EOF
+  fi
+
+done

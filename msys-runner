@@ -1,0 +1,72 @@
+#!/bin/sh
+#
+# Main MSYS-OW15 script
+#
+set -euf -o pipefail
+
+cfg=${MSYS_CFG:-/etc/msys.cfg}
+if [ -d "${MSYS_LIBDIR:-}" ] ; then
+  libdir=${MSYS_LIBDIR}
+else
+  if [ -d $(dirname $0)/ashlib ] ; then
+    libdir=$(cd $(dirname $0) ; pwd)
+  else
+    libdir=${MSYS_LIBDIR:-/lib/msys}
+  fi
+fi
+
+while [ $# -gt 0 ]
+do
+  case "$1" in
+  --cfg=*)
+    cfg=${1#--cfg=}
+    ;;
+  --lib=*)
+    libdir=${1#--lib=}
+    ;;
+  *)
+    break
+    ;;
+  esac
+  shift
+done
+
+. $libdir/ashlib/core.sh
+. $libdir/ashlib/on_exit.sh
+. $libdir/ashlib/mkid.sh
+. $libdir/ashlib/refs.sh
+. $libdir/ashlib/fixfile.sh
+. $libdir/bblib.sh
+. $libdir/services.sh ; on_exit commit_services
+. $libdir/swinst.sh ; on_exit swinst_cleanup
+. $libdir/scripts.sh ; on_exit script_cleanup
+
+chk_fn() {
+  if type "$1" >/dev/null 2>&1 ; then
+    return 0
+  fi
+  return 1
+}
+opt_fn() {
+  local fn="$1" ; shift
+  if chk_fn "$fn" ; then
+    "$fn"
+    return $?
+  fi
+  return 0
+}
+
+. $cfg
+if [ -f /etc/secrets.cfg ] ; then
+  . /etc/secrets.cfg
+else
+  echo "*********************************************************"
+  echo "* /etc/secrets not found!"
+  echo "*********************************************************"
+fi
+
+rt_mac=$(ifconfig eth0 | awk '/HWaddr/ { print $5 }' | tr A-Z a-z )
+cfg_mac=$(echo "$rt_mac" | tr -d :)
+opt_fn "cfg_${cfg_mac}"
+
+. $libdir/$MSYS_TEMPL.sh
