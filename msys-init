@@ -26,6 +26,41 @@ fi
 payload=""
 autorun=""
 
+send_file() {
+  local lname="$1" ; shift
+  local eofmarker="EOF_$RANDOM$RANDOM$RANDOM"
+  echo "fixfile $* <<'$eofmarker'"
+  echo "$(cat "$lname")"
+  echo "$eofmarker"
+}
+
+apply_new() {
+  local f="$1"
+  # Make sure there is a default....
+  if [ ! -f "$1-dist" ] ; then
+    > "$1-dist"
+  fi
+  if [ ! -f "$1" ] ; then
+    > "$1"
+  fi
+  if cmp "$1-dist" "$1-new" ; then
+    # New file contains no changes...
+    echo "$1: unchanged!" 1>&2
+    return
+  fi
+  # Changes need to be applied
+  if cmp "$1-dist" "$1" ; then
+    # No manual changes have happened
+    cp -a "$1-new" "$1"
+    cp -a "$1-new" "$1-dist"
+    echo "$1: updated"
+    return
+  fi
+  # Changes being submitted while manual changes exist!
+  echo "$1: manual changes detected!"
+}
+
+
 while [ $# -gt 0 ]
 do
   case "$1" in
@@ -61,6 +96,7 @@ do
 done
 
 . $libdir/ashlib/core.sh
+. $libdir/ashlib/fixfile.sh
 
 [ -z "$passwd" ] && fatal "Define a default password!" || :
 [ -z "$authkeys" ] && fatal "Define authorized keys" || :
@@ -109,26 +145,23 @@ do
     fi
   fi
 
-  scp \
-	-o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null' \
-	-p \
-	"$cfg" "$secrets" "root@$target":/etc
-  $libdir/msys-deploy --lib=$libdir $payload $autorun "$target"
 
-  #~ (
-    #~ eof_marker=$(md5sum "$0" | awk '{print $1}')
-    #~ declare -f fatal fixfile
-    #~ echo "fixfile --mode=755 /bin/l2cfs <<'__EOF_$eof_marker'"
-    #~ for i in core.sh fixattr.sh fixfile.sh fixlnk.sh shesc.sh
-    #~ do
-      #~ cat "$ashlib_dir/$i"
-    #~ done
-    #~ cat $(dirname $0)/l2cfs.sh
-    #~ echo ''
-    #~ echo "__EOF_$eof_marker"
-    #~ # Copy scripts
-    #~ # Copy default config files (if any)
-  #~ ) |ssh  root@$target
+  (
+    echo "secrets=/etc/secrets.cfg"
+    echo "cfg=/etc/msys.cfg"
+    declare -f fixfile
+    send_file "$cfg" --mode=644 '$cfg'-new
+    send_file "$secret" --mode=600 '$secrets'-new
+    declare -f apply_new
+    echo 'apply_new $cfg'
+    echo 'apply_new $secrets'
+  ) | ssh -o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null' -l root $target
+
+  #~ scp \
+	#~ -o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null' \
+	#~ -p \
+	#~ "$cfg" "$secrets" "root@$target":/etc
+  $libdir/msys-deploy --lib=$libdir $payload $autorun "$target"
 
 
 done
