@@ -12,7 +12,7 @@ My adhoc config management scripts for OpenWRT
 ## msys-init
 
 If telnet is active (i.e. factory reset), then
-  Initializes root user and copies configuration files.
+itnitializes root user and copies configuration files.
 Copies configuration files and then runs deploy.
 
 This script can be used for initialization and later for
@@ -44,4 +44,18 @@ Arguments:
 - --[no-]autorun : run (or not run) deploy
 - additional options are the target hosts
 
+## Failsafe mode
 
+For the TL-WRT1043ND-V1.
+
+- Power on device
+- Wait for the `SYS` LED starts blinking.
+- Press the `QSS` button repeatedly until the `SYS` LED starts blinking rapidly.
+- You can now access the device using `telnet` to `192.168.1.1/24` on the LAN ports.
+
+### Things to do after entering Failsafe mode
+
+- `mount_root`
+  - make the root filesystem available and writeable.
+- `firstboot`
+  - factory reset the device.
