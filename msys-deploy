@@ -82,6 +82,7 @@ do
   #~ fi
 
   if (tar -zcf - -C "$payload" \
+	--dereference \
 	--exclude=./muninlite \
 	--exclude-backups \
 	--exclude-caches \
