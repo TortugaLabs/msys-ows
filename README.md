@@ -59,8 +59,10 @@ For the TL-WRT1043ND-V1.
 - `mount_root`
   - make the root filesystem available and writeable.
 - `firstboot`
-  - factory reset the device. (Do not do `mount_root`)
-  - Last I tested, output is send to /dev/kmsg, but it is not
+  - factory reset the device.
+  - Last I tested, you sort of need do `mount_root` first for
+    this to work properly.
+  - All output is send to /dev/kmsg, but it is not
     really interactive.  It is just asking for:
   - `jffs2reset: This will erase all settings and remove any installed packages. Are you sure? [N/y]`
   - So just enter `y` follow by `ENTER` and you are done.
@@ -71,7 +73,7 @@ I usually run with some configurations settings in a file.  Then
 execute scripts as such:
 
 ```
-../msys-ows.env ./msys-deploy system
+../msys-ows.env ./msys-deploy target-ip
 ```
 
 

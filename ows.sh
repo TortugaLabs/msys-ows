@@ -11,6 +11,19 @@ openwrt_version=$(cat /etc/openwrt_version)
     && fatal "Invalid device type (missing openwrt_release)" || :
 . /etc/openwrt_release
 
+# Check VLANs and set the WIFI status
+WIFI=$(
+  for vnet in $VLANS
+  do
+    wifi=$(get ${vnet}_WIFI 2>/dev/null)
+    if $wifi ; then
+      echo true
+      exit
+    fi
+  done
+  echo false
+)
+
 # Load optional modules
 for module in ${MSYS_MODULES}
 do
@@ -57,8 +70,8 @@ if $WIFI ; then
       do
 	vid=$(get ${vnet}_VLAN_ID 2>/dev/null)
 	[ $vid -ne $OWS_VLAN ] && continue || :
-	nowifi=$(get ${vnet}_NOWIFI 2>/dev/null)
-	$nowifi && break || :
+	wifi=$(get ${vnet}_WIFI 2>/dev/null)
+	$wifi || break
 	ssid=$(get ${vnet}_WIFI_SSID '' 2>/dev/null)
 	[ -z "$ssid" ] && break || :
 	echo option type bridge
