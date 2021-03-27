@@ -4,7 +4,7 @@ My adhoc config management scripts for OpenWRT
 
 ## Scripts
 
-- msys-init : initializes a new switch
+- msys-init : initializes a new switch, or update a switch
 - msys-deploy : Install files into switches
 - msys-runner : Applies configuration to switch ... runs on the switch
 		itself.
@@ -33,7 +33,8 @@ Arguments:
 
 ## msys-deploy
 
-Copies configuration scripts to switch and optionally run them.
+Copies scripts to switch and optionally run them.  It does not
+copy configurationfiles. (Use `msys-init` for this.)
 
 Arguments:
 
@@ -58,4 +59,20 @@ For the TL-WRT1043ND-V1.
 - `mount_root`
   - make the root filesystem available and writeable.
 - `firstboot`
-  - factory reset the device.
+  - factory reset the device. (Do not do `mount_root`)
+  - Last I tested, output is send to /dev/kmsg, but it is not
+    really interactive.  It is just asking for:
+  - `jffs2reset: This will erase all settings and remove any installed packages. Are you sure? [N/y]`
+  - So just enter `y` follow by `ENTER` and you are done.
+
+# TIPS
+
+I usually run with some configurations settings in a file.  Then
+execute scripts as such:
+
+```
+../msys-ows.env ./msys-deploy system
+```
+
+
+
