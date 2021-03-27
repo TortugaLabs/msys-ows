@@ -17,7 +17,7 @@ enable() {
     fi
     COMMIT_SRV=yes
     local srvid=$(mkid SRV_${SRV})
-    local cSTATUS=$(get $srvid "")
+    local cSTATUS=$(get $srvid "" 2>/dev/null)
     if [ -z "$cSTATUS" ] ; then
       assign $srvid on
     fi
@@ -34,7 +34,7 @@ restart() {
   fi
   COMMIT_SRV=yes
   local srvid=$(mkid SRV_${srv})
-  local cSTATUS=$(get $srvid "")
+  local cSTATUS=$(get $srvid "" 2>/dev/null)
   [ x"$cSTATUS" = x"restart" ] && return || :
 
   local cfile
@@ -67,7 +67,7 @@ disable() {
   do
     [ ! -x /etc/init.d/$srv ] && return || :
     local srvid=$(mkid SRV_${srv})
-    local cSTATUS=$(get $srvid "")
+    local cSTATUS=$(get $srvid "" 2>/dev/null)
     if [ ! -z "$cSTATUS" ] ; then
       assign $srvid ""
     fi
@@ -95,7 +95,7 @@ commit_services() {
     [ -x /etc/init.d/$SRV ] || continue
 
     local SRVID=$(mkid SRV_${SRV})
-    local cSTATUS=$(get $SRVID '')
+    local cSTATUS=$(get $SRVID '' 2>/dev/null)
 
     if [ x"$cSTATUS" = x"on" ] ; then
       /etc/init.d/$SRV enabled && continue || :
