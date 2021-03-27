@@ -53,6 +53,7 @@ do_ssh() {
 	-o 'StrictHostKeyChecking=no' \
 	-o 'UserKnownHostsFile=/dev/null' \
 	-o 'BatchMode=true' \
+	-o "KexAlgorithms +diffie-hellman-group1-sha1" \
 	-l root \
 	"$@"
 }

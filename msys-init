@@ -126,7 +126,7 @@ do
 	_EOF_
 	. /etc/openwrt_release
 	echo "\$DISTRIB_ID \$DISTRIB_CODENAME \$DISTRIB_TARGET (\$DISTRIB_RELEASE \$DISTRIB_REVISION)" | tee /etc/banner
-	exit 
+	exit
 	EOF
       ) | (
 	while read ln
@@ -136,7 +136,11 @@ do
       ) | telnet "$target" || echo exit=$?
       # Wait for SSH to come up....
       retries=30
-      while ! ssh -o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null' -l root $target true
+      while ! ssh \
+		-o 'StrictHostKeyChecking=no' \
+		-o 'UserKnownHostsFile=/dev/null' \
+		-o "KexAlgorithms +diffie-hellman-group1-sha1" \
+		-l root $target true
       do
 	retries=$(expr $retries - 1)
 	[ $retries -eq 0 ] && fatal "SSHD failed to start..."
@@ -151,11 +155,15 @@ do
     echo "cfg=/etc/msys.cfg"
     declare -f fixfile
     send_file "$cfg" --mode=644 '$cfg'-new
-    send_file "$secret" --mode=600 '$secrets'-new
+    send_file "$secrets" --mode=600 '$secrets'-new
     declare -f apply_new
     echo 'apply_new $cfg'
     echo 'apply_new $secrets'
-  ) | ssh -o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null' -l root $target
+  ) | ssh \
+		-o 'StrictHostKeyChecking=no' \
+		-o 'UserKnownHostsFile=/dev/null' \
+		-o "KexAlgorithms +diffie-hellman-group1-sha1" \
+		-l root $target
 
   #~ scp \
 	#~ -o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null' \
