@@ -33,7 +33,7 @@ esac
 #
 # Basic configuration
 #
-fixfile -N /etc/config/system <<-EOF
+(fixfile /etc/config/system || :)<<-EOF
 	config system
 	    option hostname "$SYSNAME"
 	    option timezone "$(awk -vFS=":" '$1 == "'$TZ'" { print $2 }' $libdir/tz.dat)"
@@ -49,16 +49,16 @@ fixfile -N /etc/config/system <<-EOF
 	EOF
 restart boot /etc/config/system
 
-fixfile -N /etc/config/network <<-EOF
+(fixfile /etc/config/network || :)<<-EOF
 	config interface 'loopback'
 	    option ifname 'lo'
 	    option proto 'static'
 	    option ipaddr '127.0.0.1'
 	    option netmask '255.0.0.0'
-	    
+
 	config globals 'globals'
 	    option ula_prefix 'fda9:fa83:29d5::/48'
-	
+
 	config interface vl$OWS_VLAN
 	    option ifname eth0.$OWS_VLAN
 	    option force_link 1
@@ -80,7 +80,7 @@ if [ -L /etc/resolv.conf ] ; then
   echo "Removing DHCP resolv.conf"
   rm -f /etc/resolv.conf
 fi
-fixfile -N /etc/resolv.conf <<-EOF
+(fixfile /etc/resolv.conf || :)<<-EOF
 domain $OWS_DOMAIN
 $(
 for i in $OWS_NS
@@ -92,25 +92,25 @@ EOF
 
 script_install srv
 
-# install xinetd (for muninlite)
-if [ -z "$(opkg info xinetd)" ] ; then
-  # Not installed yet...
-  opkg install $libdir/xinetd_2.3.15-3_ar71xx.ipk
-  enable xinetd
-fi
+#~ # install xinetd (for muninlite)
+#~ if [ -z "$(opkg info xinetd)" ] ; then
+  #~ # Not installed yet...
+  #~ opkg install $libdir/xinetd_2.3.15-3_ar71xx.ipk
+  #~ enable xinetd
+#~ fi
 
-# Configure munin-node/muninlite
-script_install --target=/usr/sbin munin-node
-fixfile -N /etc/xinetd.d/munin <<-EOF
-service munin
-{
-	socket_type	= stream
-	protocol	= tcp
-	wait		= no
-	user		= root
-	group		= root
-	server		= /usr/sbin/munin-node
-	disable		= no
-}
-EOF
-restart xinetd /etc/xinetd.d/munin /etc/xinetd.conf
+#~ # Configure munin-node/muninlite
+#~ script_install --target=/usr/sbin munin-node
+#~ (fixfile /etc/xinetd.d/munin || : )<<-EOF
+#~ service munin
+#~ {
+	#~ socket_type	= stream
+	#~ protocol	= tcp
+	#~ wait		= no
+	#~ user		= root
+	#~ group		= root
+	#~ server		= /usr/sbin/munin-node
+	#~ disable		= no
+#~ }
+#~ EOF
+#~ restart xinetd /etc/xinetd.d/munin /etc/xinetd.conf
