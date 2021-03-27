@@ -75,11 +75,11 @@ do
 	mkdir -p "$install_location.new"
 	EOF
 
-  if [ -d "$payload/muninlite" ] ; then
-    rm -f "$payload/munin-node"
-    make -C "$payload/muninlite" PLUGINS="cpu if_ if_err_ load memory processes uptime interrupts irqstats owswitch_"
-    ln "$payload/muninlite/munin-node" "$payload/munin-node"
-  fi
+  #~ if [ -d "$payload/muninlite" ] ; then
+    #~ rm -f "$payload/munin-node"
+    #~ make -C "$payload/muninlite" PLUGINS="cpu if_ if_err_ load memory processes uptime interrupts irqstats owswitch_"
+    #~ ln "$payload/muninlite/munin-node" "$payload/munin-node"
+  #~ fi
 
   if (tar -zcf - -C "$payload" \
 	--exclude=./muninlite \
