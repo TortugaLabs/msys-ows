@@ -25,12 +25,12 @@ config_wifi_if() {
     warn "Missing WIFI_WCHAN"
     return 0
   fi
-  
+
   local vnet ssid vid
   for vnet in $VLANS
   do
-    vid=$(get ${vnet}_VLAN_ID)
-    ssid=$(get ${vnet}_WIFI_SSID '')
+    vid=$(get ${vnet}_VLAN_ID 2>/dev/null)
+    ssid=$(get ${vnet}_WIFI_SSID '' 2>/dev/null)
     [ -z "$ssid" ] && continue || :
     echo "config interface vl$vid"
     echo "    option ifname eth0.$vid"
@@ -50,10 +50,10 @@ config_wifi_radio() {
   local vnet
   for vnet in $VLANS
   do
-    local vid=$(get ${vnet}_VLAN_ID)
-    local ssid=$(get ${vnet}_WIFI_SSID '') ; [ -z "$ssid" ] && continue || :
-    local psk=$(get ${vnet}_WIFI_PSK '')
-    
+    local vid=$(get ${vnet}_VLAN_ID 2>/dev/null)
+    local ssid=$(get ${vnet}_WIFI_SSID '' 2>/dev/null) ; [ -z "$ssid" ] && continue || :
+    local psk=$(get ${vnet}_WIFI_PSK '' 2>/dev/null)
+
     cat <<-EOF
 	config wifi-iface
 	    option device $radio
@@ -78,7 +78,7 @@ config_wifi() {
     if [ -z "${WIFI_WCHAN:-}" ] ; then
       warn "Missing WIFI_WCHAN"
     else
-      fixfile -N /etc/config/wireless <<-EOF
+      (fixfile /etc/config/wireless || :)<<-EOF
 	config wifi-device radio0
 	    option hwmode 11g
 	    option path 'platform/ath9k'
@@ -92,7 +92,7 @@ config_wifi() {
       return 0
     fi
   fi
-  fixfile -N /etc/config/wireless <<-EOF
+  (fixfile /etc/config/wireless || :)<<-EOF
 	config wifi-device  radio0
 	    option type     mac80211
 	    option channel  11
@@ -115,7 +115,7 @@ vlan_ports() {
 
   for i in $(seq 0 4)
   do
-    p_vlan=$(get SWITCH_${i} "")
+    p_vlan=$(get SWITCH_${i} "" 2>/dev/null)
     [ -z "$p_vlan" ] && continue || :
 
     if [ x"$p_vlan" = x"trunk" ] ; then
@@ -129,20 +129,20 @@ vlan_ports() {
 
 config_switch() {
   local swname=switch0
-  
+
   cat <<-EOF
 	config switch
 	    option name "$swname"
 	    option reset 1
 	    option enable_vlan 1
 	    option enable_vlan4k 1
-	
+
 	EOF
 
   local vnet vid port
   for vnet in $VLANS
   do
-    vid=$(get ${vnet}_VLAN_ID)
+    vid=$(get ${vnet}_VLAN_ID 2>/dev/null)
     echo "# $vnet"
     echo "config switch_vlan"
     echo "    option device \"$swname\""
@@ -151,11 +151,11 @@ config_switch() {
     echo ""
   done
 
-  local def_vlan_id=$(get ${DEFAULT_VLAN}_VLAN_ID "")
+  local def_vlan_id=$(get ${DEFAULT_VLAN}_VLAN_ID "" 2>/dev/null)
   if [ -n "$def_vlan_id" ] ; then
     for port in $(seq 0 4)
     do
-      vid=$(get SWITCH_${port} "")
+      vid=$(get SWITCH_${port} "" 2>/dev/null)
       [ -z "$vid" ] && continue || :
       [ x"$vid" != x"trunk" ] && continue || :
       cat <<-EOF
