@@ -26,10 +26,13 @@ config_wifi_if() {
     return 0
   fi
 
-  local vnet ssid vid
+  local vnet ssid vid nowifi
   for vnet in $VLANS
   do
+    nowifi=$(get ${vnet}_NOWIFI 2>/dev/null)
+    $nowifi && continue || :
     vid=$(get ${vnet}_VLAN_ID 2>/dev/null)
+    [ $vid -eq $OWS_VLAN ] && continue || :
     ssid=$(get ${vnet}_WIFI_SSID '' 2>/dev/null)
     [ -z "$ssid" ] && continue || :
     echo "config interface vl$vid"
@@ -47,9 +50,12 @@ config_wifi_radio() {
   fi
   local radio="$1" ; shift
 
-  local vnet
+  local vnet nowifi
   for vnet in $VLANS
   do
+    nowifi=$(get ${vnet}_NOWIFI 2>/dev/null)
+    $nowifi && continue || :
+
     local vid=$(get ${vnet}_VLAN_ID 2>/dev/null)
     local ssid=$(get ${vnet}_WIFI_SSID '' 2>/dev/null) ; [ -z "$ssid" ] && continue || :
     local psk=$(get ${vnet}_WIFI_PSK '' 2>/dev/null)

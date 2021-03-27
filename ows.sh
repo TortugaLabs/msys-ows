@@ -49,6 +49,24 @@ esac
 	EOF
 restart boot /etc/config/system
 
+# Figure out if OWS_VLAN has wifi...
+ows_opt_type_bridge=''
+if $WIFI ; then
+  ows_opt_type_bridge="$(
+      for vnet in $VLANS
+      do
+	vid=$(get ${vnet}_VLAN_ID 2>/dev/null)
+	[ $vid -ne $OWS_VLAN ] && continue || :
+	nowifi=$(get ${vnet}_NOWIFI 2>/dev/null)
+	$nowifi && break || :
+	ssid=$(get ${vnet}_WIFI_SSID '' 2>/dev/null)
+	[ -z "$ssid" ] && break || :
+	echo option type bridge
+	break
+      done
+  )"
+fi
+
 (fixfile /etc/config/network || :)<<-EOF
 	config interface 'loopback'
 	    option ifname 'lo'
@@ -61,6 +79,7 @@ restart boot /etc/config/system
 
 	config interface vl$OWS_VLAN
 	    option ifname eth0.$OWS_VLAN
+	    $ows_opt_type_bridge
 	    option force_link 1
 	    option proto static
 	    option ipaddr $OWS_SN.$NODEID
