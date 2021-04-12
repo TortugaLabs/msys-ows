@@ -53,6 +53,8 @@ For the TL-WRT1043ND-V1.
 - Wait for the `SYS` LED starts blinking.
 - Press the `QSS` button repeatedly until the `SYS` LED starts blinking rapidly.
 - You can now access the device using `telnet` to `192.168.1.1/24` on the LAN ports.
+- To manually configure an IP address:
+  - `ip address add 192.168.1.16/24 dev enp0s20f0u2u1`
 
 ### Things to do after entering Failsafe mode
 
