@@ -46,7 +46,7 @@ done
 
 [ -z "$payload" ] && payload=$libdir || :
 
-. $libdir/ashlib/core.sh
+. $libdir/ashlib/src/ashlib/core.sh
 
 do_ssh() {
   ssh \
@@ -59,6 +59,22 @@ do_ssh() {
 }
 
 [ ! -d "$payload" ] && fatal "Payload $payload not found" || :
+
+
+packsrc() {
+  local payload=$(readlink -f "$1")
+  tar -zcf - \
+	-C "$payload/ashlib/src" \
+	./ashlib \
+	-C "$payload" \
+	--dereference \
+	--exclude=./muninlite \
+	--exclude-backups \
+	--exclude-caches \
+	--exclude-vcs \
+	--exclude ashlib \
+	.
+}
 
 for target in "$@"
 do
@@ -81,13 +97,8 @@ do
     #~ ln "$payload/muninlite/munin-node" "$payload/munin-node"
   #~ fi
 
-  if (tar -zcf - -C "$payload" \
-	--dereference \
-	--exclude=./muninlite \
-	--exclude-backups \
-	--exclude-caches \
-	--exclude-vcs \
-	. | do_ssh "$target" tar -C "$install_location.new" -zxf -) ; then
+  if (packsrc "$payload" \
+	| do_ssh "$target" tar -C "$install_location.new" -zxf -) ; then
     do_ssh "$target" <<-EOF
 	rm -rf "$install_location.old"
 	[ -d "$install_location" ] && mv "$install_location" "$install_location.old" || :

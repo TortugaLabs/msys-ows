@@ -95,8 +95,8 @@ do
   shift
 done
 
-. $libdir/ashlib/core.sh
-. $libdir/ashlib/fixfile.sh
+. $libdir/ashlib/src/ashlib/core.sh
+. $libdir/ashlib/src/ashlib/fixfile.sh
 
 [ -z "$passwd" ] && fatal "Define a default password!" || :
 [ -z "$authkeys" ] && fatal "Define authorized keys" || :
